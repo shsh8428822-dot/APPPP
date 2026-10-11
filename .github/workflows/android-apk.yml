@@ -17,6 +17,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore Hebrew translation cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/yiddish_glosses_he.json
+          key: yiddish-he-v1-${{ hashFiles('tools/build_yiddish_dictionary.py') }}
+          restore-keys: |
+            yiddish-he-v1-
+      - name: Install Hebrew translation engine
+        run: python -m pip install --disable-pip-version-check argostranslate==1.9.6
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -26,8 +39,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Prepare offline 10,000-word Yiddish dictionary
-        run: python3 tools/build_yiddish_dictionary.py
+      - name: Prepare offline 10,000-word Yiddish-Hebrew dictionary
+        run: python tools/build_yiddish_dictionary.py
       - name: Build APK
         run: gradle --no-daemon assembleDebug
       - name: Upload APK artifact

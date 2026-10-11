@@ -27,7 +27,7 @@ private data class DictionaryEntry(
     val id: Int,
     val yiddish: String,
     val partOfSpeech: String,
-    val gloss: String
+    val meaningHe: String
 )
 
 class MainActivity : Activity(), TextToSpeech.OnInitListener {
@@ -119,15 +119,15 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun showHome() {
         showScreen("לערנט יידיש", "לימוד יומי למתחילים • התוכן הבסיסי זמין גם ללא אינטרנט") {
             panel("ברוכים הבאים!", "נתחיל מ־12 מילים שימושיות, כלל דקדוק אחד, שיחה קצרה וחמש שאלות תרגול.")
-            panel("מילון יידיש מורחב", "${dictionaryEntries.size} ערכים לא מקוונים זמינים לחיפוש. את ההגדרות במילון המורחב מציגים באנגלית.")
-            actionButton("📖  מילון מורחב — 10,000 ערכים") { showDictionary() }
+            panel("מילון יידיש–עברית", "${dictionaryEntries.size} ערכים זמינים לחיפוש ללא אינטרנט, עם פירושים בעברית.")
+            actionButton("📖  מילון יידיש–עברית — 10,000 ערכים") { showDictionary() }
             actionButton("📚  שיעור 1 — שלום והיכרות") { showLesson() }
-            actionButton("🧠  חזרה חכמה על מילים (SRS)") { startReview() }
+            actionButton("🧠  חזרה חכמה על מילים") { startReview() }
             actionButton("✅  מבחן קצר — 5 שאלות") { startQuiz() }
             actionButton("💬  תרגול שיחה ביידיש") { showChat() }
             actionButton("📈  ההתקדמות שלי") { showProgress() }
             actionButton("🔊  בדיקת שמע") { speak("שלום") }
-            smallText("הערה: השמע תלוי בקול יידיש המותקן במכשיר. תרגול השיחה בגרסה זו מקומי ואינו מתחבר לשירות GPT.")
+            smallText("הערה: השמעת המילים תלויה בקול יידיש המותקן במכשיר. תרגול השיחה פועל ללא אינטרנט באמצעות תגובות מוכנות.")
         }
     }
 
@@ -197,7 +197,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
         val word = quizQuestions[quizPosition]
         showScreen("שאלה ${quizPosition + 1} מתוך ${quizQuestions.size}", "בחר את הפירוש הנכון") {
-            panel(word.yiddish, "הגייה: ${word.pronunciation}")
+            panel(word.yiddish, if (word.pronunciation.isBlank()) "בחר את הפירוש הנכון" else "הגייה: ${word.pronunciation}")
             val options = (listOf(word.hebrew) + learningWords().filter { it.id != word.id }.shuffled().take(3).map { it.hebrew }).distinct().shuffled()
             options.forEach { option ->
                 actionButton(option) {
@@ -239,7 +239,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         val w = reviewQueue[reviewPosition]
         showScreen("חזרה חכמה", "כרטיסייה ${reviewPosition + 1} מתוך ${reviewQueue.size}") {
-            panel(w.yiddish, "תעתיק להגייה: ${w.pronunciation}")
+            panel(w.yiddish, if (w.pronunciation.isBlank()) "מילה לתרגול" else "תעתיק להגייה: ${w.pronunciation}")
             actionButton("הצג פירוש") { showReviewRevealed(w) }
             secondaryButton("חזרה למסך הבית") { showHome() }
         }
@@ -329,9 +329,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     val id = parts[0].toIntOrNull() ?: return@mapNotNull null
                     val term = parts[1].trim()
                     val pos = parts[2].trim()
-                    val gloss = parts[3].trim()
-                    if (term.isBlank() || gloss.isBlank()) null
-                    else DictionaryEntry(id, term, pos, gloss)
+                    val meaningHe = parts[3].trim()
+                    if (term.isBlank() || meaningHe.isBlank()) null
+                    else DictionaryEntry(id, term, pos, meaningHe)
                 }.toList()
             }
         } catch (_: Exception) {
@@ -347,7 +347,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     id = 100000 + entry.id,
                     yiddish = entry.yiddish,
                     pronunciation = "",
-                    hebrew = "הגדרה באנגלית: ${entry.gloss}",
+                    hebrew = entry.meaningHe,
                     example = ""
                 )
             }
@@ -358,7 +358,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         val needle = query.trim().lowercase(Locale.ROOT)
         val filtered = if (needle.isBlank()) dictionaryEntries else dictionaryEntries.filter {
             it.yiddish.lowercase(Locale.ROOT).contains(needle) ||
-                it.gloss.lowercase(Locale.ROOT).contains(needle) ||
+                it.meaningHe.lowercase(Locale.ROOT).contains(needle) ||
                 it.partOfSpeech.lowercase(Locale.ROOT).contains(needle)
         }
         val pageSize = 25
@@ -366,10 +366,10 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         val safePage = page.coerceIn(0, pageCount - 1)
         val pageEntries = filtered.drop(safePage * pageSize).take(pageSize)
 
-        showScreen("מילון יידיש", "${dictionaryEntries.size} ערכים לא מקוונים • תוצאות ${filtered.size}") {
-            panel("חיפוש במאגר", "אפשר לחפש מילה ביידיש או מילה מתוך ההגדרה באנגלית. מאגר זה כולל 10,000 ערכים; ההגדרות אינן תרגום לעברית.")
+        showScreen("מילון יידיש–עברית", "${dictionaryEntries.size} ערכים ללא אינטרנט • תוצאות ${filtered.size}") {
+            panel("חיפוש במאגר", "אפשר לחפש מילה ביידיש או בפירוש בעברית. הפירושים נוצרו בתרגום ממוחשב ועלולות להיות בהם טעויות, לכן כדאי לבדוק פירוש חשוב במילון מוסמך.")
             val search = EditText(this@MainActivity).apply {
-                hint = "חיפוש ביידיש או באנגלית"
+                hint = "חיפוש ביידיש או בעברית"
                 textSize = 16f
                 setSingleLine(true)
                 setText(query)
@@ -377,13 +377,13 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             addView(search, matchWrap())
             actionButton("חפש") { showDictionary(search.text.toString(), 0) }
             if (dictionaryEntries.isEmpty()) {
-                panel("המילון אינו זמין בגרסה זו", "המאגר נוצר בשלב בניית ה־APK. הורד את הגרסה המעודכנת לאחר שהבנייה ב־GitHub תסתיים.")
+                panel("המילון אינו זמין בגרסה זו", "יש להוריד ולהתקין את הגרסה המעודכנת של האפליקציה כדי להשתמש במילון המורחב.")
             } else if (filtered.isEmpty()) {
-                panel("לא נמצאו תוצאות", "נסה לכתוב חלק מהמילה או מההגדרה באנגלית.")
+                panel("לא נמצאו תוצאות", "נסה לכתוב חלק מהמילה ביידיש או מהפירוש בעברית.")
             } else {
                 bodyText("עמוד ${safePage + 1} מתוך $pageCount")
                 pageEntries.forEach { entry ->
-                    panel(entry.yiddish, "הגדרה באנגלית: ${entry.gloss}\nסוג מילה: ${entry.partOfSpeech.ifBlank { "לא צוין" }}")
+                    panel(entry.yiddish, "פירוש בעברית: ${entry.meaningHe}\nסוג מילה: ${partOfSpeechInHebrew(entry.partOfSpeech)}")
                     secondaryButton(
                         if (prefs.getBoolean("dict_selected_${entry.id}", false)) "✓ נוספה לרשימת הלימוד" else "הוסף לרשימת החזרות"
                     ) {
@@ -398,6 +398,35 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             secondaryButton("חזרה למסך הבית") { showHome() }
         }
     }
+
+    private fun partOfSpeechInHebrew(value: String): String =
+        when (value.trim().lowercase(Locale.ROOT)) {
+            "noun" -> "שם עצם"
+            "verb" -> "פועל"
+            "adjective" -> "שם תואר"
+            "adverb" -> "תואר הפועל"
+            "pronoun" -> "כינוי גוף"
+            "proper noun", "proper name" -> "שם פרטי"
+            "numeral" -> "מספר"
+            "particle" -> "מילית"
+            "preposition" -> "מילת יחס"
+            "postposition" -> "מילת יחס שאחריה בא הביטוי"
+            "conjunction" -> "מילת חיבור"
+            "interjection" -> "מילת קריאה"
+            "phrase" -> "ביטוי"
+            "prefix" -> "תחילית"
+            "suffix" -> "סיומת"
+            "determiner" -> "מילת קביעה"
+            "article" -> "מילת יידוע"
+            "auxiliary verb" -> "פועל עזר"
+            "symbol" -> "סמל"
+            "letter", "character" -> "אות"
+            "proverb" -> "פתגם"
+            "idiom" -> "ניב"
+            "participle" -> "בינוני"
+            "contraction" -> "צורת כיווץ"
+            else -> "סוג מילה אחר"
+        }
 
     private fun showProgress() {
         val deck = learningWords()

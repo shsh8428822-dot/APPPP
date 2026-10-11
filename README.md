@@ -1,16 +1,22 @@
-# Yiddish Learner Android
+# לומדים יידיש — אפליקציה לאנדרואיד
 
-אפליקציית Android ללימוד יידיש למתחילים. כוללת שיעור מובנה, כרטיסיות, תרגול, חזרה במרווחים ותרגול שיחה לא מקוון.
+אפליקציה ללימוד יידיש למתחילים, עם ממשק בעברית ותוכן בסיסי שפועל גם ללא חיבור לאינטרנט.
 
-## Build
-GitHub Actions builds a debug APK on pushes to `main` and exposes it as a workflow artifact. Open **Actions → Android APK Build → latest run → Artifacts** to download `YiddishLearner-debug-apk`.
+## מה כלול באפליקציה
+- שיעור פתיחה עם 12 מילים שימושיות, דקדוק, שיחה ותרגול.
+- מילון יידיש–עברית עם 10,000 ערכים, חיפוש והצגת סוג המילה.
+- אפשרות להוסיף ערכים נבחרים לחזרות חכמות ולמבחנים.
+- חזרות במרווחים, מבחן קצר, תרגול שיחה מקומי ושמירת התקדמות במכשיר.
+- חיפוש במילון לפי המילה ביידיש או לפי הפירוש בעברית.
 
-## Scope and limitations
-- Learning content is bundled in the app and works offline.
-- Speech playback depends on whether the Android device has a Yiddish Text-to-Speech voice installed; the app will explain when it is unavailable.
-- The included chat practice is a lightweight offline practice helper, not a cloud GPT integration. A real AI tutor needs a secured backend/API key and network access.
-- This is an initial learning prototype; proofread Yiddish spellings and dialect variants with a fluent speaker before public release.
+## בנייה והורדה
+בכל עדכון לענף הראשי מופעלת בנייה אוטומטית של קובץ התקנה לבדיקה. בסיום הבנייה ניתן להוריד את הקובץ `YiddishLearner-debug.apk` משורש המאגר או ממקטע התוצרים של תהליך הבנייה.
 
+## המילון והתרגום לעברית
+מאגר היידיש נוצר מנתונים מובְנים שמקורם בוויקימילון. הפירושים באנגלית מתורגמים לעברית בזמן הבנייה באמצעות מנוע תרגום מקומי, ולא באמצעות שירות תרגום מקוון. התרגום הממוחשב עלול לכלול שגיאות; מילים חשובות, משמעויות נדירות וצורות ניביות ראוי לבדוק מול מילון מוסמך או דובר יידיש שוטף. כאשר אין תרגום עברי שמיש, האפליקציה מציגה הודעה בעברית במקום להשאיר פירוש באנגלית.
 
-## Offline Yiddish dictionary (10,000 entries)
-Before building, GitHub Actions downloads machine-readable Yiddish data from Kaikki/Wiktionary and creates an offline TSV asset bundled into the APK. The dictionary screen supports searching Yiddish words or English glosses and adding selected entries to spaced repetition. The first 12 lesson words retain their Hebrew translations; the broader 10,000-entry reference dictionary currently shows English glosses, not Hebrew translations. Dataset source: https://kaikki.org/dictionary/Yiddish/index.html . The data is derived from Wiktionary; see the applicable CC BY-SA license at https://creativecommons.org/licenses/by-sa/4.0/ .
+מקור הנתונים: https://kaikki.org/dictionary/Yiddish/index.html  
+רישיון חומר המקור: https://creativecommons.org/licenses/by-sa/4.0/
+
+## שמע
+השמעת מילים תלויה בקיומו של קול יידיש במכשיר האנדרואיד. אם אין קול כזה, אפשר עדיין להשתמש במילון, בשיעורים, בכרטיסיות ובתרגילים.
