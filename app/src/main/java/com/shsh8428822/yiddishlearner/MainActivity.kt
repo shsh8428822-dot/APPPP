@@ -32,6 +32,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private val paleGreen = Color.rgb(231, 239, 231)
 
     private lateinit var prefs: android.content.SharedPreferences
+    private lateinit var currentPage: LinearLayout
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var quizQuestions: List<Word> = emptyList()
@@ -100,6 +101,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }
             page.addView(sub, matchWrap())
         }
+        currentPage = page
         page.content()
         scroll.addView(page)
         setContentView(scroll)
@@ -361,7 +363,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         box.addView(detail, matchWrap())
         val lp = LinearLayout.LayoutParams(-1, -2)
         lp.setMargins(0, dp(5), 0, dp(8))
-        addView(box, lp)
+        currentPage.addView(box, lp)
     }
 
     private fun sectionTitle(value: String) {
@@ -372,7 +374,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             setTextColor(forestDark)
             setPadding(0, dp(18), 0, dp(8))
         }
-        addView(tv, matchWrap())
+        currentPage.addView(tv, matchWrap())
     }
 
     private fun bodyText(value: String) {
@@ -410,7 +412,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
         val lp = LinearLayout.LayoutParams(-1, dp(height))
         lp.setMargins(0, dp(5), 0, dp(5))
-        addView(button, lp)
+        currentPage.addView(button, lp)
     }
 
     private fun matchWrap() = LinearLayout.LayoutParams(-1, -2)
