@@ -23,6 +23,13 @@ private data class Word(
     val example: String
 )
 
+private data class DictionaryEntry(
+    val id: Int,
+    val yiddish: String,
+    val partOfSpeech: String,
+    val gloss: String
+)
+
 class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private val forest = Color.rgb(32, 86, 63)
     private val forestDark = Color.rgb(23, 63, 47)
@@ -41,6 +48,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private var reviewQueue: List<Word> = emptyList()
     private var reviewPosition = 0
     private val chatLines = mutableListOf<Pair<String, String>>()
+    private var dictionaryEntries: List<DictionaryEntry> = emptyList()
 
     private val words = listOf(
         Word(1, "שלום", "שאָלעם", "שלום", "שלום!"),
@@ -60,6 +68,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("yiddish_learner", MODE_PRIVATE)
+        loadDictionary()
         tts = TextToSpeech(this, this)
         showHome()
     }
@@ -110,6 +119,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun showHome() {
         showScreen("לערנט יידיש", "לימוד יומי למתחילים • התוכן הבסיסי זמין גם ללא אינטרנט") {
             panel("ברוכים הבאים!", "נתחיל מ־12 מילים שימושיות, כלל דקדוק אחד, שיחה קצרה וחמש שאלות תרגול.")
+            panel("מילון יידיש מורחב", "${dictionaryEntries.size} ערכים לא מקוונים זמינים לחיפוש. את ההגדרות במילון המורחב מציגים באנגלית.")
+            actionButton("📖  מילון מורחב — 10,000 ערכים") { showDictionary() }
             actionButton("📚  שיעור 1 — שלום והיכרות") { showLesson() }
             actionButton("🧠  חזרה חכמה על מילים (SRS)") { startReview() }
             actionButton("✅  מבחן קצר — 5 שאלות") { startQuiz() }
@@ -163,7 +174,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun startQuiz() {
-        quizQuestions = words.shuffled().take(5)
+        quizQuestions = learningWords().shuffled().take(5)
         quizPosition = 0
         quizScore = 0
         showQuizQuestion()
@@ -187,7 +198,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         val word = quizQuestions[quizPosition]
         showScreen("שאלה ${quizPosition + 1} מתוך ${quizQuestions.size}", "בחר את הפירוש הנכון") {
             panel(word.yiddish, "הגייה: ${word.pronunciation}")
-            val options = (listOf(word.hebrew) + words.filter { it.id != word.id }.shuffled().take(3).map { it.hebrew }).distinct().shuffled()
+            val options = (listOf(word.hebrew) + learningWords().filter { it.id != word.id }.shuffled().take(3).map { it.hebrew }).distinct().shuffled()
             options.forEach { option ->
                 actionButton(option) {
                     if (option == word.hebrew) quizScore++
@@ -201,7 +212,10 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun startReview() {
         val now = System.currentTimeMillis()
-        reviewQueue = words.filter { prefs.getLong("due_${it.id}", 0L) <= now }
+        reviewQueue = learningWords()
+            .filter { prefs.getLong("due_${it.id}", 0L) <= now }
+            .sortedBy { prefs.getLong("due_${it.id}", 0L) }
+            .take(30)
         reviewPosition = 0
         showReviewCard()
     }
@@ -233,7 +247,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun showReviewRevealed(w: Word) {
         showScreen("האם זכרת?", "כרטיסיית חזרה חכמה") {
-            panel(w.yiddish, "פירוש: ${w.hebrew}\nדוגמה: ${w.example}")
+            panel(w.yiddish, "פירוש / הגדרה: ${w.hebrew}" + if (w.example.isNotBlank()) "\nדוגמה: ${w.example}" else "")
             actionButton("זכרתי ✅") {
                 val stageKey = "stage_${w.id}"
                 val stage = prefs.getInt(stageKey, 0)
@@ -305,13 +319,96 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
+
+    private fun loadDictionary() {
+        dictionaryEntries = try {
+            assets.open("yiddish_dictionary.tsv").bufferedReader(Charsets.UTF_8).useLines { lines ->
+                lines.drop(1).mapNotNull { line ->
+                    val parts = line.split('\t')
+                    if (parts.size < 4) return@mapNotNull null
+                    val id = parts[0].toIntOrNull() ?: return@mapNotNull null
+                    val term = parts[1].trim()
+                    val pos = parts[2].trim()
+                    val gloss = parts[3].trim()
+                    if (term.isBlank() || gloss.isBlank()) null
+                    else DictionaryEntry(id, term, pos, gloss)
+                }.toList()
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun learningWords(): List<Word> {
+        val selected = dictionaryEntries
+            .filter { prefs.getBoolean("dict_selected_${it.id}", false) }
+            .map { entry ->
+                Word(
+                    id = 100000 + entry.id,
+                    yiddish = entry.yiddish,
+                    pronunciation = "",
+                    hebrew = "הגדרה באנגלית: ${entry.gloss}",
+                    example = ""
+                )
+            }
+        return words + selected
+    }
+
+    private fun showDictionary(query: String = "", page: Int = 0) {
+        val needle = query.trim().lowercase(Locale.ROOT)
+        val filtered = if (needle.isBlank()) dictionaryEntries else dictionaryEntries.filter {
+            it.yiddish.lowercase(Locale.ROOT).contains(needle) ||
+                it.gloss.lowercase(Locale.ROOT).contains(needle) ||
+                it.partOfSpeech.lowercase(Locale.ROOT).contains(needle)
+        }
+        val pageSize = 25
+        val pageCount = maxOf(1, (filtered.size + pageSize - 1) / pageSize)
+        val safePage = page.coerceIn(0, pageCount - 1)
+        val pageEntries = filtered.drop(safePage * pageSize).take(pageSize)
+
+        showScreen("מילון יידיש", "${dictionaryEntries.size} ערכים לא מקוונים • תוצאות ${filtered.size}") {
+            panel("חיפוש במאגר", "אפשר לחפש מילה ביידיש או מילה מתוך ההגדרה באנגלית. מאגר זה כולל 10,000 ערכים; ההגדרות אינן תרגום לעברית.")
+            val search = EditText(this@MainActivity).apply {
+                hint = "חיפוש ביידיש או באנגלית"
+                textSize = 16f
+                setSingleLine(true)
+                setText(query)
+            }
+            addView(search, matchWrap())
+            actionButton("חפש") { showDictionary(search.text.toString(), 0) }
+            if (dictionaryEntries.isEmpty()) {
+                panel("המילון אינו זמין בגרסה זו", "המאגר נוצר בשלב בניית ה־APK. הורד את הגרסה המעודכנת לאחר שהבנייה ב־GitHub תסתיים.")
+            } else if (filtered.isEmpty()) {
+                panel("לא נמצאו תוצאות", "נסה לכתוב חלק מהמילה או מההגדרה באנגלית.")
+            } else {
+                bodyText("עמוד ${safePage + 1} מתוך $pageCount")
+                pageEntries.forEach { entry ->
+                    panel(entry.yiddish, "הגדרה באנגלית: ${entry.gloss}\nסוג מילה: ${entry.partOfSpeech.ifBlank { "לא צוין" }}")
+                    secondaryButton(
+                        if (prefs.getBoolean("dict_selected_${entry.id}", false)) "✓ נוספה לרשימת הלימוד" else "הוסף לרשימת החזרות"
+                    ) {
+                        prefs.edit().putBoolean("dict_selected_${entry.id}", true).apply()
+                        Toast.makeText(this@MainActivity, "המילה נוספה לרשימת הלימוד.", Toast.LENGTH_SHORT).show()
+                        showDictionary(query, safePage)
+                    }
+                }
+                if (safePage > 0) secondaryButton("העמוד הקודם") { showDictionary(query, safePage - 1) }
+                if (safePage + 1 < pageCount) actionButton("העמוד הבא") { showDictionary(query, safePage + 1) }
+            }
+            secondaryButton("חזרה למסך הבית") { showHome() }
+        }
+    }
+
     private fun showProgress() {
-        val learned = words.count { prefs.getInt("stage_${it.id}", 0) > 0 }
+        val deck = learningWords()
+        val learned = deck.count { prefs.getInt("stage_${it.id}", 0) > 0 }
+        val selected = dictionaryEntries.count { prefs.getBoolean("dict_selected_${it.id}", false) }
         val lessonDone = prefs.getBoolean("lesson_1_done", false)
         val best = prefs.getInt("quiz_best", 0)
         showScreen("ההתקדמות שלי", "הנתונים נשמרים במכשיר שלך") {
             panel("השיעורים", if (lessonDone) "שיעור 1 הושלם ✅" else "שיעור 1 עדיין לא סומן כהושלם")
-            panel("כרטיסיות שנלמדו", "$learned מתוך ${words.size} מילים קיבלו לפחות חזרה אחת.")
+            panel("כרטיסיות שנלמדו", "$learned מתוך ${deck.size} מילים ברשימת הלימוד קיבלו לפחות חזרה אחת.")
+            panel("מילים שנוספו מהמילון", "$selected ערכים מתוך ${dictionaryEntries.size} זמינים במאגר.")
             panel("שיא במבחן", "$best מתוך 5 תשובות נכונות.")
             actionButton("המשך לשיעור") { showLesson() }
             secondaryButton("חזרה למסך הבית") { showHome() }
