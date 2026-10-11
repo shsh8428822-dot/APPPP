@@ -384,7 +384,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             setTextColor(ink)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
-        addView(tv, matchWrap())
+        currentPage.addView(tv, matchWrap())
     }
 
     private fun smallText(value: String) {
@@ -394,7 +394,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             setTextColor(muted)
             setPadding(0, dp(18), 0, dp(8))
         }
-        addView(tv, matchWrap())
+        currentPage.addView(tv, matchWrap())
     }
 
     private fun actionButton(label: String, action: () -> Unit) = addStyledButton(label, forest, Color.WHITE, action)
